@@ -1,0 +1,102 @@
+---
+title: "Incarceration Trends in America"
+output: html_document
+date: '2022-02-22'
+---
+```{r, echo = FALSE, include = FALSE, message = FALSE, warning = FALSE} 
+incarceration_trends <- read.csv("https://raw.githubusercontent.com/vera-institute/incarceration-trends/master/incarceration_trends.csv")
+incarceration_trends_jail_jurisdiction <- read.csv("https://raw.githubusercontent.com/vera-institute/incarceration-trends/master/incarceration_trends_jail_jurisdiction.csv")
+library("dplyr")
+library("stringr")
+library("ggplot2")
+library("shiny")
+library("usmap")
+```
+
+In this report I am hoping to expose some patterns of inequality in the United States prison system, particularly with regards to the black community. The data that serves as the basis for this investigation is very extensive. There is data across age groups, ethnic groups, jails, prisons, counties across the country, different geographic groups, even data on different jurisdictions- and more. The size and detail of this data set allows for a very in depth dive into different trends in data exposing inequalities in the prison system. In this report I will focus on disparities in incarceration rates between the black population and the rest of the American population.
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+df1 <- incarceration_trends %>% 
+  filter(year == max(year)) %>%
+  summarize(sum_white_pop = sum(white_pop_15to64, na.rm = TRUE), sum_black_pop = sum(black_pop_15to64, na.rm = TRUE), sum_black_jail = sum(black_jail_pop, na.rm = TRUE), sum_white_jail = sum(white_jail_pop, na.rm = TRUE))
+white_jail_prop = df1[, 4] / df1[, 1]
+```
+```{r, echo = FALSE}
+black_jail_prop = df1[, 3] / df1[, 2]
+```
+```{r, echo = FALSE}
+black_vs_white_prop = black_jail_prop / white_jail_prop
+```
+```{r, echo = FALSE}
+df_county_highest_black_jail <- incarceration_trends %>% 
+  filter(year == max(year)) %>% 
+  select(county_name, black_jail_pop_rate) %>%
+  slice(which.max(black_jail_pop_rate))
+county_highest_black_jail <- df_county_highest_black_jail[, 1]
+```
+```{r, echo = FALSE}
+df_ratio_male_to_female <- incarceration_trends %>% 
+  filter(year == max(year)) %>% 
+  summarize(sum_male = sum(male_adult_jail_pop, na.rm = TRUE), sum_female = sum(female_adult_jail_pop, na.rm = TRUE))
+ratio_male_to_female <- df_ratio_male_to_female[, 1] / df_ratio_male_to_female[, 2]
+```
+
+From the onset, the data set reveals some glaring differences in incarceration rates between the black population and the white population. In the year 2018, the ratio of white people in jail to the total white total population was `r white_jail_prop`. For the black population, this number was `r black_jail_prop`.
+From this we see that the ratio of black jail rates to white jail rates in the year 2018 (as percentage of population) was `r black_vs_white_prop`. This statistic exposes a huge disparity in incarceration rates. 
+Another informative data point I chose to examine was the county with the highest black incarceration rate. For 2018, the most recent year in the data point, that county was `r county_highest_black_jail`. This piece of data is relevant because it points to locations that have more work to do than others. Not all counties/states are even contributors to this problem- a targeted approach may be beneficial. I will seek to visualize this idea later in the report. Lastly, beyond inequality in black incarceration rates, there are other trends in prison data that can be beneficial to examine. For example, prison populations by gender. The ratio of male to female prison population as of 2018 was `r ratio_male_to_female` (this ratio is often more pronounced in the black community). I will set data like this aside and focus on disparities by race in this report.
+
+
+Below is a chart that shows the black prison population as a function of the white prison population. We would obviously expect black prison to population to increase as white prison population increases (as this means that total prison population is increasing), but the more interesting thing to observe here is the nuances in the curve. We already know that the black prison population is disproportionately large compared to the white prison population. When observing the curve, at the start there is a relatively small slope, but when the white prison population gets large the slope gets significantly larger. This may indicate that when prison populations are large, corrupt practices may be more prevalent, thus contributing to the higher increase in black prison population at this level.
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+ggplot(incarceration_trends, aes(x = white_prison_pop, y = black_prison_pop)) + 
+  geom_smooth() + 
+  xlim(0, 2500) + ylim(0, 3000) + 
+  xlab("White Prison Population") + ylab("Black Prison Population") + 
+  ggtitle("Black Prison Population vs White Prison Population in American Counties")
+```
+
+
+As discussed earlier in the report, disparities in incarceration rates is a widespread problem, but some areas of the United States are bigger contributors to the problem. Because of this, it is beneficial to examine how these disparities vary by location. In this visualization I have chosen to present the ratio of black incarceration rates to white incarceration rates for each state. The visualization shows states that are doing well on fixing this problem, and also shows states that still need a lot of work.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+state_ratios <- incarceration_trends %>% 
+  group_by(state) %>%
+  summarize(sum_white_pop = sum(white_pop_15to64, na.rm = TRUE), sum_black_pop = sum(black_pop_15to64, na.rm = TRUE), sum_black_jail = sum(black_jail_pop, na.rm = TRUE), sum_white_jail = sum(white_jail_pop, na.rm = TRUE)) %>%
+  mutate(white_jail_rate = sum_white_jail / sum_white_pop) %>%
+  mutate(black_jail_rate = sum_black_jail / sum_black_pop) %>%
+  mutate(black_white_ratio = black_jail_rate / white_jail_rate) %>%
+  select(state, black_white_ratio) %>%
+  filter(black_white_ratio < 11)
+state_ratios[is.na(state_ratios)] <- 0
+
+plot_usmap(data = state_ratios, values = "black_white_ratio") + 
+  scale_fill_continuous(low = "white", high = "red", name = "Ratio black/white") +
+  theme(legend.position = "right") +
+  ggtitle("Ratio of Black Jail Rate to White Jail Rate by State")
+```
+
+
+In that same vein, it makes sense to examine time periods and regions in which disparities in black incarceration rates was a worsening issue (in this case, white incarceration rates as well). In the following visualization, black and white incarceration rates in the geographical South are depicted from the year 1970 to 2008. 
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+df3 <- incarceration_trends %>%
+  filter(year > 1989) %>%
+  filter(year < 2006) %>%
+  filter(region == "South") %>%
+  group_by(year) %>%
+  summarize(year, sum_black_jail = sum(black_jail_pop, na.rm = TRUE), sum_black_pop = sum(black_pop_15to64, na.rm = TRUE), sum_white_jail = sum(white_jail_pop, na.rm = TRUE), sum_white_pop = sum(white_pop_15to64, na.rm = TRUE)) %>%
+  mutate(black = sum_black_jail / sum_black_pop) %>%
+  mutate(white = sum_white_jail / sum_white_pop) %>%
+  select(black, white) %>%
+  distinct()
+View(df3)
+
+ggplot() + 
+  geom_line(data=df3,aes(y = black,x = year,colour="black"),size=1 )+
+  geom_line(data=df3,aes(y = white,x = year,colour="white"),size=1) +
+  scale_color_manual(name = "Race", values = c("black" = "darkblue", "white" = "red")) + 
+  ylab("Proportion of Population in Jail") + 
+  ggtitle("Proportion of Population Incarcerated by Race from 1990 to 2008")
+```
+
+All in all, this data set exposes the fact that racial disparities in incarceration rate are still very prevalent. These disparities are not equivalent throughout the United States, but the problem is widespread, and we need to work to address it.

@@ -1,0 +1,22 @@
+-- For OH:
+How to get rid of those outputs that I don't want
+Do I need to host a shiny app like he showed in lecture?
+Is there a way to have just the regression line
+
+
+5 values to be used in the summary
+  Value 1: Proportion of white population in jail (.0027)
+  Value 2: Proportion of black population in jail (.0085)
+  Value 3: Ratio of black proportion to white proportion (3.2)
+  Value 4: County with highest black jail rate (Daggett County)
+  Value 5: Male to female ratio
+
+Chart of a variable changing with respect to time
+  Chart of the black jail population as proportion of total black population (in the South)
+
+Chart of two variables
+  urbanicity = urban
+
+
+Map
+  map of black vs white incarceration rates for each state
